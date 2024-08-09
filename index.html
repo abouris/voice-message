@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dark Voice Messenger</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #121212;
+            color: #e0e0e0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            background-color: #1e1e1e;
+            border-radius: 8px;
+            padding: 2rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+        h1 {
+            color: #bb86fc;
+            margin-bottom: 1.5rem;
+        }
+        button {
+            background-color: #03dac6;
+            color: #000000;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            margin: 0.5rem;
+        }
+        button:hover {
+            background-color: #018786;
+        }
+        button:disabled {
+            background-color: #6e6e6e;
+            cursor: not-allowed;
+        }
+        #status {
+            margin-top: 1rem;
+            font-style: italic;
+        }
+        #emailInput {
+            background-color: #2c2c2c;
+            border: 1px solid #bb86fc;
+            color: #ffffff;
+            padding: 0.5rem;
+            border-radius: 4px;
+            font-size: 1rem;
+            width: 100%;
+            box-sizing: border-box;
+            margin-bottom: 1rem;
+        }
+        #timer {
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+        }
+        .pulse {
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse {
+            0% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
+            100% {
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>Voice Messenger</h1>
+    <input type="email" id="emailInput" placeholder="Enter recipient's email">
+    <div id="timer">00:00</div>
+    <button id="recordButton">Start Recording</button>
+    <button id="stopButton" disabled>Stop Recording</button>
+    <button id="downloadButton" disabled>Download Message</button>
+    <button id="openMailButton" disabled>Open Mail Client</button>
+    <div id="status"></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/RecordRTC/5.6.2/RecordRTC.min.js"></script>
+<script>
+    let recorder;
+    let audio;
+    let isRecording = false;
+    let timer;
+    let seconds = 0;
+    let blobUrl;
+
+    const recordButton = document.getElementById('recordButton');
+    const stopButton = document.getElementById('stopButton');
+    const downloadButton = document.getElementById('downloadButton');
+    const openMailButton = document.getElementById('openMailButton');
+    const status = document.getElementById('status');
+    const emailInput = document.getElementById('emailInput');
+    const timerDisplay = document.getElementById('timer');
+
+    recordButton.addEventListener('click', startRecording);
+    stopButton.addEventListener('click', stopRecording);
+    downloadButton.addEventListener('click', downloadMessage);
+    openMailButton.addEventListener('click', openMailClient);
+
+    function startRecording() {
+        navigator.mediaDevices.getUserMedia({ audio: true })
+            .then(function(stream) {
+                recorder = RecordRTC(stream, {
+                    type: 'audio',
+                    mimeType: 'audio/webm'
+                });
+                recorder.startRecording();
+                isRecording = true;
+                updateUI();
+                startTimer();
+            });
+    }
+
+    function stopRecording() {
+        recorder.stopRecording(function() {
+            let blob = recorder.getBlob();
+            audio = new Audio(URL.createObjectURL(blob));
+            blobUrl = URL.createObjectURL(blob);
+            isRecording = false;
+            updateUI();
+            stopTimer();
+        });
+    }
+
+    function downloadMessage() {
+        const downloadLink = document.createElement('a');
+        downloadLink.href = blobUrl;
+        downloadLink.download = 'voice_message.webm';
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+        document.body.removeChild(downloadLink);
+    }
+
+    function openMailClient() {
+        const email = emailInput.value;
+        if (!email) {
+            status.textContent = "Please enter a valid email address.";
+            return;
+        }
+
+        const subject = "A voice message for you";
+        const body = "Please find the voice message attached.";
+
+        const mailtoLink = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+        
+        window.location.href = mailtoLink;
+        status.textContent = "Mail client opened. Please attach the downloaded voice message.";
+    }
+
+    function updateUI() {
+        recordButton.disabled = isRecording;
+        stopButton.disabled = !isRecording;
+        downloadButton.disabled = isRecording;
+        openMailButton.disabled = isRecording;
+    }
+
+    function startTimer() {
+        timer = setInterval(() => {
+            seconds++;
+            updateTimerDisplay();
+        }, 1000);
+    }
+
+    function stopTimer() {
+        clearInterval(timer);
+    }
+
+    function updateTimerDisplay() {
+        const minutes = Math.floor(seconds / 60);
+        const remainingSeconds = seconds % 60;
+        timerDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+    }
+</script>
+</body>
+</html>
